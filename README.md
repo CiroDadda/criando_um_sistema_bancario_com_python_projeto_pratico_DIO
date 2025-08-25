@@ -1,5 +1,6 @@
 # Projeto_DIO_Criando_um_Sistema_Bancario_com_Python
 Projeto prático 'Criando um Sistema Bancário com Python' do curso 'Suzano - Python Developer #2' na DIO. 
+
 O código inicial fornecido já continha uma boa estrutura para o sistema. As implementações a seguir garantem que todas as regras de negócio descritas sejam atendidas:
 
 Depósito: A lógica para aceitar apenas valores positivos já estava presente e correta. Os depósitos são adicionados ao saldo e registrados na variável extrato.
