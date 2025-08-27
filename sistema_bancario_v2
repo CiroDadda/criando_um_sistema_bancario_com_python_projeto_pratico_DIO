@@ -1,0 +1,240 @@
+# -*- coding: utf-8 -*-
+import re
+from datetime import datetime
+import pytz
+
+# --- FUNÇÕES DE UTILIDADE ---
+
+def limpar_cpf(cpf):
+    """Remove caracteres não numéricos de uma string de CPF."""
+    return re.sub(r'\D', '', cpf)
+
+def formatar_data(data_utc):
+    """Converte uma data UTC para o fuso horário de São Paulo e a formata."""
+    fuso_horario_sp = pytz.timezone('America/Sao_Paulo')
+    data_sp = data_utc.astimezone(fuso_horario_sp)
+    return data_sp.strftime('%d/%m/%Y %H:%M:%S')
+
+# --- FUNÇÕES DE OPERAÇÕES BANCÁRIAS ---
+
+def depositar(saldo, valor, extrato, /):
+    """
+    Realiza um depósito na conta.
+    Argumentos são recebidos apenas por posição.
+    Retorna o novo saldo e o extrato atualizado.
+    """
+    if valor > 0:
+        saldo += valor
+        transacao = {
+            "tipo": "Depósito",
+            "valor": valor,
+            "data": datetime.now(pytz.utc)
+        }
+        extrato.append(transacao)
+        print("\n=== Depósito realizado com sucesso! ===")
+    else:
+        print("\n@@@ Operação falhou! O valor informado é inválido. @@@")
+    
+    return saldo, extrato
+
+def sacar(*, saldo, valor, extrato, limite, numero_saques, limite_saques):
+    """
+    Realiza um saque na conta.
+    Argumentos são recebidos apenas por nome.
+    Retorna o novo saldo e o extrato atualizado.
+    """
+    excedeu_saldo = valor > saldo
+    excedeu_limite = valor > limite
+    excedeu_saques = numero_saques >= limite_saques
+
+    if excedeu_saldo:
+        print(f"\n@@@ Operação falhou! Saldo insuficiente. Saldo atual: R$ {saldo:.2f} @@@")
+    elif excedeu_limite:
+        print(f"\n@@@ Operação falhou! O valor do saque excede o limite de R$ {limite:.2f}. @@@")
+    elif excedeu_saques:
+        print(f"\n@@@ Operação falhou! Número máximo de {limite_saques} saques diários excedido. @@@")
+    elif valor > 0:
+        saldo -= valor
+        transacao = {
+            "tipo": "Saque",
+            "valor": valor,
+            "data": datetime.now(pytz.utc)
+        }
+        extrato.append(transacao)
+        print("\n=== Saque realizado com sucesso! ===")
+    else:
+        print("\n@@@ Operação falhou! O valor informado é inválido. @@@")
+
+    return saldo, extrato
+
+def exibir_extrato(saldo, /, *, extrato):
+    """
+    Exibe o extrato da conta.
+    Argumentos: 'saldo' por posição, 'extrato' por nome.
+    """
+    print("\n================ EXTRATO ================")
+    if not extrato:
+        print("Não foram realizadas movimentações.")
+    else:
+        for transacao in extrato:
+            valor_formatado = f"R$ {transacao['valor']:.2f}"
+            data_formatada = formatar_data(transacao['data'])
+            print(f"{transacao['tipo']}:\t{valor_formatado}\t\tData: {data_formatada}")
+    
+    print(f"\nSaldo:\t\tR$ {saldo:.2f}")
+    print("==========================================")
+
+# --- FUNÇÕES DE GERENCIAMENTO DE USUÁRIOS E CONTAS ---
+
+def criar_usuario(usuarios):
+    """Cadastra um novo usuário (cliente) no sistema."""
+    cpf = limpar_cpf(input("Informe o CPF (somente números): "))
+    
+    # Verifica se o CPF já está cadastrado
+    if filtrar_usuario(cpf, usuarios):
+        print("\n@@@ Já existe um usuário cadastrado com este CPF! @@@")
+        return
+
+    nome = input("Informe o nome completo: ")
+    data_nascimento = input("Informe a data de nascimento (dd-mm-aaaa): ")
+    endereco = input("Informe o endereço (logradouro, nro - bairro - cidade/sigla estado): ")
+
+    novo_usuario = {
+        "nome": nome,
+        "data_nascimento": data_nascimento,
+        "cpf": cpf,
+        "endereco": endereco
+    }
+    usuarios.append(novo_usuario)
+    print("\n=== Usuário criado com sucesso! ===")
+
+def filtrar_usuario(cpf, usuarios):
+    """Busca um usuário na lista pelo CPF."""
+    usuarios_filtrados = [usuario for usuario in usuarios if usuario["cpf"] == cpf]
+    return usuarios_filtrados[0] if usuarios_filtrados else None
+
+def criar_conta_corrente(agencia, numero_conta, usuarios, contas):
+    """Cria uma nova conta corrente vinculada a um usuário."""
+    cpf = limpar_cpf(input("Informe o CPF do usuário para vincular a conta: "))
+    usuario = filtrar_usuario(cpf, usuarios)
+
+    if usuario:
+        nova_conta = {"agencia": agencia, "numero_conta": numero_conta, "usuario": usuario}
+        contas.append(nova_conta)
+        print("\n=== Conta criada com sucesso! ===")
+        return contas, numero_conta + 1
+    
+    print("\n@@@ Usuário não encontrado! Fluxo de criação de conta encerrado. @@@")
+    return contas, numero_conta
+
+def listar_contas(contas):
+    """Exibe uma lista de todas as contas cadastradas."""
+    if not contas:
+        print("\nNenhuma conta cadastrada.")
+        return
+
+    print("\n================ LISTA DE CONTAS ================")
+    for conta in contas:
+        linha = f"""\
+            Agência:\t{conta['agencia']}
+            C/C:\t\t{conta['numero_conta']}
+            Titular:\t{conta['usuario']['nome']}
+        """
+        print(linha)
+        print("-" * 50)
+
+# --- FUNÇÃO PRINCIPAL E EXECUÇÃO ---
+
+def menu():
+    """Exibe o menu de opções e retorna a escolha do usuário."""
+    menu_texto = """
+    ================ MENU ================
+    [d]\tDepositar
+    [s]\tSacar
+    [e]\tExtrato
+    [nu]\tNovo Usuário
+    [nc]\tNova Conta
+    [lc]\tListar Contas
+    [q]\tSair
+    => """
+    return input(menu_texto)
+
+def main():
+    """Função principal que executa o sistema bancário."""
+    # Constantes
+    AGENCIA = "0001"
+    LIMITE_SAQUES = 3
+    LIMITE_TRANSACOES_DIARIAS = 10
+
+    # Variáveis de estado (simulando um único usuário logado para V2)
+    saldo = 0
+    limite = 500
+    extrato = []
+    
+    # Listas para armazenar dados do sistema
+    usuarios = []
+    contas = []
+    numero_conta_atual = 1
+
+    while True:
+        opcao = menu()
+
+        # --- Verificação de Limite de Transações Diárias ---
+        fuso_horario_sp = pytz.timezone('America/Sao_Paulo')
+        hoje_sp = datetime.now(fuso_horario_sp).date()
+        
+        transacoes_hoje = [
+            t for t in extrato 
+            if t['data'].astimezone(fuso_horario_sp).date() == hoje_sp
+        ]
+        
+        if len(transacoes_hoje) >= LIMITE_TRANSACOES_DIARIAS and opcao in ("d", "s"):
+            print(f"\n@@@ Limite de {LIMITE_TRANSACOES_DIARIAS} transações diárias atingido! @@@")
+            continue
+
+        # --- Operações ---
+        if opcao == "d":
+            try:
+                valor = float(input("Informe o valor do depósito: R$ "))
+                saldo, extrato = depositar(saldo, valor, extrato)
+            except ValueError:
+                print("\n@@@ Operação falhou! Por favor, insira um valor numérico. @@@")
+
+        elif opcao == "s":
+            try:
+                valor = float(input("Informe o valor do saque: R$ "))
+                saques_hoje = [t for t in transacoes_hoje if t['tipo'] == 'Saque']
+                numero_saques = len(saques_hoje)
+
+                saldo, extrato = sacar(
+                    saldo=saldo,
+                    valor=valor,
+                    extrato=extrato,
+                    limite=limite,
+                    numero_saques=numero_saques,
+                    limite_saques=LIMITE_SAQUES,
+                )
+            except ValueError:
+                print("\n@@@ Operação falhou! Por favor, insira um valor numérico. @@@")
+
+        elif opcao == "e":
+            exibir_extrato(saldo, extrato=extrato)
+
+        elif opcao == "nu":
+            criar_usuario(usuarios)
+
+        elif opcao == "nc":
+            contas, numero_conta_atual = criar_conta_corrente(AGENCIA, numero_conta_atual, usuarios, contas)
+
+        elif opcao == "lc":
+            listar_contas(contas)
+
+        elif opcao == "q":
+            print("\nObrigado por utilizar nosso sistema. Até logo!")
+            break
+
+        else:
+            print("\n@@@ Operação inválida, por favor selecione novamente a operação desejada. @@@")
+
+if __name__ == "__main__":
+    main()
