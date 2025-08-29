@@ -37,4 +37,20 @@ Principais Mudanças e Melhorias:
 
 O sistema está pronto para os próximos desafios. O próximo passo natural seria permitir que o usuário selecione uma conta para realizar as operações, evoluindo para um sistema multi-contas completo.
 
+# Versão 3
+
+Resumo das Alterações e Melhorias:
+Modelagem em Classes: Toda a lógica foi encapsulada em classes, seguindo fielmente o diagrama UML. Temos classes para representar conceitos do mundo real (PessoaFisica, ContaCorrente) e ações (Deposito, Saque).
+
+Herança e Polimorfismo: Utilizamos herança (ContaCorrente herda de Conta) para reutilizar código e especializar comportamentos. O polimorfismo é aplicado através da classe abstrata Transacao, onde tanto Deposito quanto Saque implementam o método registrar de maneiras específicas.
+
+Encapsulamento: Atributos importantes, como _saldo, são "protegidos" (convenção do _), e o acesso a eles é feito através de propriedades (@property), o que nos dá mais controle sobre como os dados são lidos.
+
+Composição: As classes se relacionam por composição. Um Cliente tem uma lista de Contas, e uma Conta tem um Historico, o que modela corretamente as relações do problema.
+
+Código Mais Limpo e Organizado: A função main e as funções de menu agora são muito mais enxutas. Elas apenas orquestram as ações, delegando toda a lógica de negócios para os métodos das classes, que é onde essa responsabilidade deve estar.
+
+Esta nova estrutura é muito mais escalável. Os próximos passos poderia ser adicionar novos tipos de conta (como ContaPoupanca), novos tipos de transação ou novas regras de negócio.
+
+--
 Todo código foi criado com ajuda de IA.
